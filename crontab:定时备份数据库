@@ -1,0 +1,63 @@
+
+一、用命令实现备份
+
+进入mysql的bin目录（mysql安装目录的下一级目录）
+
+1、备份数据
+
+#mysqldump -uusername -ppassword discuz >discuz_2010-04-01.sql
+-uusernae：-u+mysql的用户名
+-ppassword：-u+mysql的密码
+discuz：数据库名
+这样就把discuz数据库所有的表结构和数据备份到discuz_2010-04-01.sql里了，
+
+如果数据量大会占用很大空间，这时可以利用gzip压缩数据，命令如下：
+#mysqldump -uusername -ppassword discuz | gzip >discuz_2010-04-01.sql.gz
+
+系统崩溃，重建系统时，可以这样恢复数据：
+#mysql -uusername -ppassword discuz <discuz_2010-04-01.sql
+
+从压缩文件直接恢复：
+#gzip < discuz_2010-04-01.sql.gz | mysql -uusername-ppassword discuz
+
+二、利用crontab，系统每天定时备份mysql数据库
+
+1、创建保存备份文件的路径/mysqldata
+#mkdir /mysqlbak
+
+2、在mysql的bin目录新建可执行文件:
+vim mysql_bak.sh
+添加文本 /root/mysql/bin/mysqldump -uusername -ppassword discuz| gzip > /mysqlbak/mysql_bak`date +%Y-%m-%d_%H%M%S`.sql.gz
+保存退出vi
+注意：mysqldump 要为绝对路径
+`date +%Y-%m-%d_%H%M%S`的` 不是英文单引号，而是英文模式下，Esc按键下面的那个按键
+
+3、修改文件属性，使其可以执行
+#chmod +x /mysqlbak/mysql_bak.sh
+
+4、修改/etc/crontab 
+即：vim /etc/crontab
+在下面添加一行
+01 3 * * * /mysqlbak/mysql_bak.sh
+表示每天3点01分执行备份
+
+也可以使用命令crontab -e 
+添加一行 01 3 * * * /mysqlbak/mysql_bak.sh
+
+两者的区别我还不清楚，稍候补充吧，我目前使用的是命令crontab -e 
+
+三、数据的恢复
+进入mysql的bin目录
+创建数据库
+#mysqladmin create discuz
+恢复数据
+#mysql discuz </mysqldata/discuz_2010-04-01.sql
+
+
+
+我遇到的问题就是直接执行mysql_bak.sh时可以正常备份数据库，
+但是crontab定时执行生成的备份文件就为空了，经过查找，
+原因就是可执行文件mysql_bak.sh中mysqldump的命令没有写绝对路径导致的，
+因为直接执行时是在mysql的bin目录下执行的，所以没有问题，
+但是crontab就不是在mysql的bin下了，所以找不到mysqldump的命令了。
+
